@@ -419,6 +419,33 @@
             border-top-color: #333;
             z-index: 1000;
         }
+
+        .favorite-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-shadow: -1px -1px 0 #333, 1px -1px 0 #333, -1px 1px 0 #333, 1px 1px 0 #333;
+        }
+
+        .favorite-btn:hover {
+            transform: scale(1.2);
+        }
+
+        .favorite-btn.favorited {
+            animation: pulse 0.3s ease;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
     </style>
 </head>
 
@@ -473,6 +500,15 @@
                         <option value="">All Durations</option>
                     </select>
                 </div>
+
+                <div class="filter-group">
+                    <label for="favoritesFilter">❤️ Favorites</label>
+                    <select id="favoritesFilter" onchange="applyFilters()">
+                        <option value="">All Workouts</option>
+                        <option value="favorites">Favorites Only</option>
+                        <option value="non-favorites">Non-favorites Only</option>
+                    </select>
+                </div>
             </div>
 
             <!-- Visual separator -->
@@ -511,7 +547,7 @@
                 data-trainer="{{ workout.trainer or '' }}" data-category="{{ workout.workout_category or '' }}"
                 data-genre="{{ workout.genre or '' }}" data-duration-bucket="{{ workout.duration_bucket or '' }}"
                 data-cached-at="{{ workout.cached_at }}" data-title="{{ workout.title or '' }}"
-                data-duration-raw="{{ workout.duration or '' }}">
+                data-duration-raw="{{ workout.duration or '' }}" data-is-favorite="{{ workout.is_favorite }}">
                 {% if workout.needs_update %}
                 <div class="update-notice">
                     ⚠️ This entry needs updating - metadata may be incomplete
@@ -519,9 +555,16 @@
                 {% endif %}
 
                 <div class="workout-header">
-                    <a href="{{ workout.url }}" target="_blank" rel="noopener noreferrer" class="workout-title-link">
-                        <div class="workout-title">{{ workout.title }}</div>
-                    </a>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                        <button class="favorite-btn {{ 'favorited' if workout.is_favorite }}" 
+                                onclick="toggleFavorite('{{ workout.url | replace("'", "\\'") }}')"
+                                title="{{ 'Remove from favorites' if workout.is_favorite else 'Add to favorites' }}">
+                            {{ '❤️' if workout.is_favorite else '🤍' }}
+                        </button>
+                        <a href="{{ workout.url }}" target="_blank" rel="noopener noreferrer" class="workout-title-link" style="flex: 1;">
+                            <div class="workout-title">{{ workout.title }}</div>
+                        </a>
+                    </div>
 
                     <div class="workout-meta">
                         {% if workout.needs_update %}
@@ -704,6 +747,7 @@
             const categoryFilter = document.getElementById('categoryFilter').value.toLowerCase();
             const genreFilter = document.getElementById('genreFilter').value.toLowerCase();
             const durationFilter = document.getElementById('durationFilter').value;
+            const favoritesFilter = document.getElementById('favoritesFilter').value;
             const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
 
             const workoutCards = document.querySelectorAll('.workout-card');
@@ -715,12 +759,16 @@
                 const cardCategory = card.getAttribute('data-category').toLowerCase();
                 const cardGenre = card.getAttribute('data-genre').toLowerCase();
                 const cardDuration = card.getAttribute('data-duration-bucket');
+                const cardIsFavorite = card.getAttribute('data-is-favorite') === 'True';
 
                 // Check filters
                 const matchesTrainer = !trainerFilter || cardTrainer.includes(trainerFilter);
                 const matchesCategory = !categoryFilter || cardCategory.includes(categoryFilter);
                 const matchesGenre = !genreFilter || cardGenre.includes(genreFilter);
                 const matchesDuration = !durationFilter || cardDuration === durationFilter;
+                const matchesFavorites = !favoritesFilter || 
+                    (favoritesFilter === 'favorites' && cardIsFavorite) ||
+                    (favoritesFilter === 'non-favorites' && !cardIsFavorite);
 
                 // Check search term (existing logic)
                 let matchesSearch = true;
@@ -759,7 +807,7 @@
                 }
 
                 // Show/hide card based on all criteria
-                if (matchesTrainer && matchesCategory && matchesGenre && matchesDuration && matchesSearch) {
+                if (matchesTrainer && matchesCategory && matchesGenre && matchesDuration && matchesFavorites && matchesSearch) {
                     card.style.display = 'block';
                     visibleWorkouts++;
                 } else {
@@ -768,7 +816,7 @@
             });
 
             // Update stats
-            updateStats(visibleWorkouts, visibleSongs, searchTerm, trainerFilter, categoryFilter, genreFilter, durationFilter);
+            updateStats(visibleWorkouts, visibleSongs, searchTerm, trainerFilter, categoryFilter, genreFilter, durationFilter, favoritesFilter);
         }
 
         function clearFilters() {
@@ -776,6 +824,7 @@
             document.getElementById('categoryFilter').value = '';
             document.getElementById('genreFilter').value = '';
             document.getElementById('durationFilter').value = '';
+            document.getElementById('favoritesFilter').value = '';
             document.getElementById('searchInput').value = '';
             document.getElementById('sortBy').value = 'cached_at_desc';
             applyFilters();
@@ -846,9 +895,9 @@
             return match ? parseInt(match[1]) : 0;
         }
 
-        function updateStats(visibleWorkouts, visibleSongs, searchTerm, trainerFilter, categoryFilter, genreFilter, durationFilter) {
+        function updateStats(visibleWorkouts, visibleSongs, searchTerm, trainerFilter, categoryFilter, genreFilter, durationFilter, favoritesFilter) {
             const statsDiv = document.getElementById('stats');
-            const hasFilters = searchTerm || trainerFilter || categoryFilter || genreFilter || durationFilter;
+            const hasFilters = searchTerm || trainerFilter || categoryFilter || genreFilter || durationFilter || favoritesFilter;
 
             if (hasFilters) {
                 let filterText = [];
@@ -857,6 +906,7 @@
                 if (categoryFilter) filterText.push(`category: ${categoryFilter}`);
                 if (genreFilter) filterText.push(`genre: ${genreFilter}`);
                 if (durationFilter) filterText.push(`duration: ${durationFilter}min`);
+                if (favoritesFilter) filterText.push(`${favoritesFilter === 'favorites' ? 'favorites only' : 'non-favorites only'}`);
 
                 statsDiv.textContent = `Found: ${visibleSongs} songs in ${visibleWorkouts} workouts (${filterText.join(', ')})`;
             } else {
@@ -1008,6 +1058,52 @@
                     }
                 }, 300);
             }, 4000);
+        }
+
+        function toggleFavorite(url) {
+            const button = event.target;
+            const originalEmoji = button.textContent;
+            
+            // Disable button during request
+            button.disabled = true;
+            button.textContent = '⏳';
+
+            fetch('/toggle-favorite', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ url: url })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update button
+                        button.textContent = data.is_favorite ? '❤️' : '🤍';
+                        button.className = data.is_favorite ? 'favorite-btn favorited' : 'favorite-btn';
+                        button.title = data.is_favorite ? 'Remove from favorites' : 'Add to favorites';
+                        
+                        // Update data attribute
+                        const workoutCard = button.closest('.workout-card');
+                        workoutCard.setAttribute('data-is-favorite', data.is_favorite ? 'True' : 'False');
+                        
+                        // Show success message
+                        showToast(data.message, 'success');
+                        
+                        // Reapply filters to update visibility if favorites filter is active
+                        applyFilters();
+                    } else {
+                        showToast('❌ Error: ' + (data.error || 'Unknown error'), 'error');
+                        button.textContent = originalEmoji;
+                    }
+                })
+                .catch(error => {
+                    showToast('❌ Error: ' + error, 'error');
+                    button.textContent = originalEmoji;
+                })
+                .finally(() => {
+                    button.disabled = false;
+                });
         }
     </script>
 </body>

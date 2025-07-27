@@ -123,6 +123,7 @@ class AppleFitnessScraper:
             "songs_json": "TEXT",
             "needs_update": "BOOLEAN DEFAULT 0",
             "cached_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+            "is_favorite": "BOOLEAN DEFAULT 0",
         }
 
     def _get_current_schema(self, conn):

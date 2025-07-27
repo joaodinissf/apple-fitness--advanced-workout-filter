@@ -127,7 +127,7 @@ def index():
             SELECT COALESCE(canonical_url, original_url) as display_url, 
                    original_url,
                    canonical_url, title, trainer, duration, genre, episode, workout_type, workout_category, date, datetime, 
-                   cached_at, songs_json, needs_update 
+                   cached_at, songs_json, needs_update, is_favorite
             FROM workout_cache 
             ORDER BY cached_at DESC
         """)
@@ -151,6 +151,7 @@ def index():
             cached_at,
             songs_json,
             needs_update,
+            is_favorite,
         ) = row
 
         songs = []
@@ -180,6 +181,7 @@ def index():
                 "song_count": len(songs),
                 "songs": songs,
                 "needs_update": bool(needs_update),
+                "is_favorite": bool(is_favorite),
             }
         )
 
@@ -253,6 +255,51 @@ def update_single():
     processing_queue.put(([url], True))
 
     return jsonify({"message": f"Started updating: {url}"})
+
+
+@app.route("/toggle-favorite", methods=["POST"])
+def toggle_favorite():
+    """Toggle favorite status for a workout"""
+    data = request.json
+    url = data.get("url", "").strip()
+
+    if not url:
+        return jsonify({"error": "No URL provided"}), 400
+
+    scraper = AppleFitnessScraper()
+
+    import sqlite3
+
+    try:
+        with sqlite3.connect(scraper.db_path) as conn:
+            # Get current favorite status
+            cursor = conn.execute(
+                "SELECT is_favorite FROM workout_cache WHERE canonical_url = ? OR original_url = ?",
+                (url, url)
+            )
+            row = cursor.fetchone()
+            
+            if not row:
+                return jsonify({"error": "Workout not found"}), 404
+            
+            current_favorite = bool(row[0])
+            new_favorite = not current_favorite
+            
+            # Update favorite status
+            conn.execute(
+                "UPDATE workout_cache SET is_favorite = ? WHERE canonical_url = ? OR original_url = ?",
+                (new_favorite, url, url)
+            )
+            conn.commit()
+            
+            return jsonify({
+                "success": True,
+                "is_favorite": new_favorite,
+                "message": f"Workout {'added to' if new_favorite else 'removed from'} favorites"
+            })
+            
+    except sqlite3.Error as e:
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
 
 
 def normalize_duration(duration_str):
