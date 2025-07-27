@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Workouts - Apple Fitness+ Advanced Workout Filter</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 14px;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #5a6fd8;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #333;
+            border: 2px solid #e1e5e9;
+        }
+
+        .btn-secondary:hover {
+            background: #e9ecef;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .status {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .status.show {
+            display: block;
+        }
+
+        .progress {
+            background: #e9ecef;
+            border-radius: 20px;
+            height: 8px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            background: #667eea;
+            height: 100%;
+            border-radius: 20px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .results {
+            margin-top: 30px;
+        }
+
+        .result-item {
+            background: #f8f9fa;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .result-item.cached {
+            border-left-color: #17a2b8;
+        }
+
+        .result-item.error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+
+        .result-url {
+            font-weight: 600;
+            margin-bottom: 5px;
+            word-break: break-all;
+        }
+
+        .result-message {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .example {
+            background: #e3f2fd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .example h3 {
+            margin: 0 0 10px 0;
+            color: #1976d2;
+        }
+
+        .example code {
+            display: block;
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>➕ Add Workouts to Library</h1>
+
+        <div
+            style="background: #f8f9fa; border-radius: 6px; padding: 15px; margin-bottom: 20px; font-size: 12px; color: #666; border-left: 3px solid #6c757d;">
+            <strong>Legal Notice:</strong> This project is not affiliated with, endorsed by, or sponsored by Apple Inc.
+            or any other company.
+            Apple, Apple Fitness+, Apple Music, and all related trademarks are the property of Apple Inc.
+            All other trademarks, service marks, and trade names referenced are the property of their respective owners.
+            This is an independent, educational project for personal use only.
+        </div>
+
+        <div class="input-section">
+            <label for="urls">Enter Apple Fitness+ workout URLs (one per line):</label>
+            <textarea id="urls" placeholder="Paste your Apple Fitness+ workout URLs here, one per line...
+
+Example URLs:
+https://fitness.apple.com/us/workout/cycling-with-emily/1810544460
+https://fitness.apple.com/us/workout/strength-with-kyle/1234567890
+https://fitness.apple.com/us/workout/yoga-with-jessica/0987654321"></textarea>
+        </div>
+
+        <div class="input-section">
+            <label>
+                <input type="checkbox" id="forceRefresh" style="margin-right: 8px;">
+                Force refresh (ignore cache)
+            </label>
+        </div>
+
+        <div class="input-section">
+            <label>
+                <input type="checkbox" id="autoRedirect" style="margin-right: 8px;" checked>
+                Automatically return to library when finished
+            </label>
+        </div>
+
+        <div class="button-group">
+            <button id="processBtn" class="btn-primary" onclick="processUrls()">
+                ➕ Add to Library
+            </button>
+            <button class="btn-secondary" onclick="viewLibrary()">
+                ← Back to Library
+            </button>
+            <button id="listPendingBtn" class="btn-secondary" onclick="listPending()" style="display: none;">
+                📋 List Pending
+            </button>
+            <button id="updatePendingBtn" class="btn-secondary" onclick="updatePending()" style="display: none;">
+                🔄 Update Pending
+            </button>
+            <button class="btn-secondary" onclick="clearResults()">
+                🗑️ Clear Results
+            </button>
+        </div>
+
+        <div id="pendingAlert" class="status"
+            style="background: #fff3cd; border-left: 4px solid #ffc107; display: none;">
+            <div id="pendingText">📝 Note: There are entries that need updating</div>
+        </div>
+
+        <div id="status" class="status">
+            <div id="statusText">Ready to add workouts...</div>
+            <div class="progress">
+                <div id="progressBar" class="progress-bar"></div>
+            </div>
+            <div id="currentUrl" style="font-size: 14px; color: #666; margin-top: 10px;"></div>
+        </div>
+
+        <div id="results" class="results"></div>
+    </div>
+
+    <script>
+        let statusInterval;
+
+        // Check for pending updates on page load
+        window.onload = function () {
+            checkPendingUpdates();
+        };
+
+        function checkPendingUpdates() {
+            fetch('/pending-updates')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.count > 0) {
+                        document.getElementById('pendingAlert').style.display = 'block';
+                        document.getElementById('pendingText').textContent =
+                            `📝 Note: ${data.count} workouts in library need updating`;
+                        document.getElementById('listPendingBtn').style.display = 'inline-block';
+                        document.getElementById('updatePendingBtn').style.display = 'inline-block';
+                    }
+                })
+                .catch(error => console.error('Error checking pending updates:', error));
+        }
+
+        function updatePending() {
+            const updateBtn = document.getElementById('updatePendingBtn');
+            updateBtn.disabled = true;
+            updateBtn.textContent = '⏳ Updating...';
+
+            fetch('/update-pending', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        resetUpdateButton();
+                    } else {
+                        document.getElementById('status').classList.add('show');
+                        document.getElementById('statusText').textContent = data.message;
+                        document.getElementById('pendingAlert').style.display = 'none';
+                        document.getElementById('listPendingBtn').style.display = 'none';
+                        document.getElementById('updatePendingBtn').style.display = 'none';
+                        startStatusPolling();
+                    }
+                })
+                .catch(error => {
+                    alert('Error: ' + error);
+                    resetUpdateButton();
+                });
+        }
+
+        function listPending() {
+            fetch('/pending-updates')
+                .then(response => response.json())
+                .then(data => {
+                    const resultsDiv = document.getElementById('results');
+                    let html = `<h2>📋 URLs Needing Update (${data.count})</h2>`;
+
+                    if (data.urls.length > 0) {
+                        html += '<div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 15px;">';
+                        data.urls.forEach((url, index) => {
+                            html += `
+                            <div style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">
+                                <strong>${index + 1}.</strong> 
+                                <span style="word-break: break-all;">${url}</span>
+                            </div>
+                        `;
+                        });
+                        html += '</div>';
+                        html += '<p style="margin-top: 15px; color: #666; font-style: italic;">Use the "Update Pending" button to refresh these entries with current metadata.</p>';
+                    } else {
+                        html += '<p>No URLs need updating.</p>';
+                    }
+
+                    resultsDiv.innerHTML = html;
+                })
+                .catch(error => {
+                    alert('Error fetching pending URLs: ' + error);
+                });
+        }
+
+        function resetUpdateButton() {
+            const updateBtn = document.getElementById('updatePendingBtn');
+            updateBtn.disabled = false;
+            updateBtn.textContent = '🔄 Update Pending';
+        }
+
+        function processUrls() {
+            const urls = document.getElementById('urls').value.trim();
+            if (!urls) {
+                alert('Please enter at least one URL');
+                return;
+            }
+
+            const forceRefresh = document.getElementById('forceRefresh').checked;
+
+            const processBtn = document.getElementById('processBtn');
+            processBtn.disabled = true;
+            processBtn.textContent = '⏳ Adding...';
+
+            document.getElementById('status').classList.add('show');
+            document.getElementById('results').innerHTML = '';
+
+            fetch('/process', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    urls: urls,
+                    force_refresh: forceRefresh
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        resetButton();
+                    } else {
+                        document.getElementById('statusText').textContent = data.message;
+                        startStatusPolling();
+                    }
+                })
+                .catch(error => {
+                    alert('Error: ' + error);
+                    resetButton();
+                });
+        }
+
+        function startStatusPolling() {
+            statusInterval = setInterval(updateStatus, 1000);
+        }
+
+        function updateStatus() {
+            fetch('/status')
+                .then(response => response.json())
+                .then(status => {
+                    if (!status.is_processing && status.completed > 0) {
+                        clearInterval(statusInterval);
+                        resetButton();
+                        resetUpdateButton();
+                        showResults(status);
+                        checkPendingUpdates(); // Refresh pending status
+                        return;
+                    }
+
+                    const progress = status.total > 0 ? (status.completed / status.total) * 100 : 0;
+                    document.getElementById('progressBar').style.width = progress + '%';
+
+                    if (status.current_url) {
+                        document.getElementById('statusText').textContent =
+                            `Adding ${status.completed + 1} of ${status.total}...`;
+                        document.getElementById('currentUrl').textContent =
+                            `Current: ${status.current_url}`;
+                    } else {
+                        document.getElementById('statusText').textContent = 'Adding...';
+                    }
+                });
+        }
+
+        function resetButton() {
+            const processBtn = document.getElementById('processBtn');
+            processBtn.disabled = false;
+            processBtn.textContent = '➕ Add to Library';
+        }
+
+        function showResults(status) {
+            const resultsDiv = document.getElementById('results');
+            let html = '<h2>Results</h2>';
+
+            // Show successful results
+            status.results.forEach(result => {
+                const cssClass = result.status === 'cached' ? 'cached' : '';
+                html += `
+                    <div class="result-item ${cssClass}">
+                        <div class="result-url">${result.url}</div>
+                        <div class="result-message">${result.message}</div>
+                    </div>
+                `;
+            });
+
+            // Show errors
+            status.errors.forEach(error => {
+                html += `
+                    <div class="result-item error">
+                        <div class="result-url">${error.url}</div>
+                        <div class="result-message">Error: ${error.error}</div>
+                    </div>
+                `;
+            });
+
+            resultsDiv.innerHTML = html;
+
+            document.getElementById('statusText').textContent =
+                `Completed! Added ${status.results.length} workouts successfully, ${status.errors.length} errors.`;
+
+            // Check if auto-redirect is enabled
+            const autoRedirect = document.getElementById('autoRedirect').checked;
+            if (autoRedirect) {
+                // Show a brief delay message then redirect
+                setTimeout(() => {
+                    document.getElementById('statusText').textContent = 'Returning to library...';
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1000);
+                }, 2000);
+            }
+        }
+
+        function viewLibrary() {
+            window.location.href = '/';
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('status').classList.remove('show');
+            document.getElementById('urls').value = '';
+        }
+    </script>
+</body>
+
+</html>
