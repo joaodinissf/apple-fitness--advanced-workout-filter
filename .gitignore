@@ -1,6 +1,4 @@
 # Project specific
-fitness_cache.db
-!personal-backup/fitness_cache.db
 *.log
 
 # Created by https://www.toptal.com/developers/gitignore/api/python,flask,sqlite,macos,vscode
